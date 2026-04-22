@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  name             String?
+  password         String?
+  role             Role         @default(USER)
+  stripeCustomerId String?      @unique
+  isPaid           Boolean      @default(false)
+  weight           Float?
+  height           Float?
+  goal             Goal?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  workoutLogs      WorkoutLog[]
+  progressLogs     ProgressLog[]
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Goal {
+  WEIGHT_LOSS
+  MUSCLE_GAIN
+  ENDURANCE
+  GENERAL_FITNESS
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  durationWeeks Int    @default(12)
+  modules     Module[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("programs")
+}
+
+model Module {
+  id         String    @id @default(cuid())
+  name       String
+  weekStart  Int
+  weekEnd    Int
+  order      Int
+  programId  String
+  program    Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  workouts   Workout[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("modules")
+}
+
+model Workout {
+  id         String     @id @default(cuid())
+  name       String
+  dayLabel   String
+  order      Int
+  moduleId   String
+  module     Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  exercises  Exercise[]
+  logs       WorkoutLog[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("workouts")
+}
+
+model Exercise {
+  id        String    @id @default(cuid())
+  name      String
+  videoUrl  String?
+  sets      Int
+  reps      String
+  restTime  Int       // seconds
+  order     Int
+  intensity Intensity @default(MEDIUM)
+  workoutId String
+  workout   Workout   @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("exercises")
+}
+
+enum Intensity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model WorkoutLog {
+  id             String   @id @default(cuid())
+  userId         String
+  workoutId      String
+  durationMinutes Int?
+  caloriesBurned  Int?
+  completedAt    DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workout        Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workoutId, completedAt])
+  @@map("workout_logs")
+}
+
+model ProgressLog {
+  id        String   @id @default(cuid())
+  userId    String
+  weight    Float?
+  notes     String?
+  date      DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("progress_logs")
+}
